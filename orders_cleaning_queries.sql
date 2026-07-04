@@ -37,3 +37,26 @@ WHERE UnitPrice <= 0;
 SELECT *
 FROM Sales.SalesOrderDetail
 WHERE LineTotal <= 0;
+------------------------------------------------------------
+-- STEP 3: Standardize important fields
+------------------------------------------------------------
+
+-- Standardize OrderDate format (convert to YYYY-MM-DD)
+SELECT 
+    SalesOrderID,
+    CONVERT(date, OrderDate) AS CleanOrderDate,
+    CustomerID,
+    TotalDue
+FROM Sales.SalesOrderHeader;
+
+-- Standardize Territory names (trim + uppercase)
+SELECT 
+    TerritoryID,
+    UPPER(LTRIM(RTRIM(Name))) AS CleanTerritoryName
+FROM Sales.SalesTerritory;
+
+-- Standardize Product names (trim + uppercase)
+SELECT 
+    ProductID,
+    UPPER(LTRIM(RTRIM(Name))) AS CleanProductName
+FROM Production.Product;
