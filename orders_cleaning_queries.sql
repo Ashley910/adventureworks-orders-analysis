@@ -60,3 +60,112 @@ SELECT
     ProductID,
     UPPER(LTRIM(RTRIM(Name))) AS CleanProductName
 FROM Production.Product;
+------------------------------------------------------------
+-- STEP 4: Check for duplicates
+------------------------------------------------------------
+
+-- Duplicate orders
+SELECT SalesOrderID, COUNT(*) AS Cnt
+FROM Sales.SalesOrderHeader
+GROUP BY SalesOrderID
+HAVING COUNT(*) > 1;
+
+-- Duplicate order lines
+SELECT SalesOrderID, ProductID, COUNT(*) AS Cnt
+FROM Sales.SalesOrderDetail
+GROUP BY SalesOrderID, ProductID
+HAVING COUNT(*) > 1;
+
+-- Duplicate customers
+SELECT CustomerID, COUNT(*) AS Cnt
+FROM Sales.Customer
+GROUP BY CustomerID
+HAVING COUNT(*) > 1;
+------------------------------------------------------------
+-- STEP 5: Build cleaned orders view
+------------------------------------------------------------
+
+SELECT 
+    h.SalesOrderID,
+    CONVERT(date, h.OrderDate) AS OrderDate,
+    h.CustomerID,
+    h.TerritoryID,
+    d.ProductID,
+    d.OrderQty,
+    d.UnitPrice,
+    d.LineTotal
+FROM Sales.SalesOrderHeader h
+JOIN Sales.SalesOrderDetail d
+    ON h.SalesOrderID = d.SalesOrderID;
+------------------------------------------------------------
+-- STEP 6: Join cleaned data with product and territory info
+------------------------------------------------------------
+
+SELECT 
+    h.SalesOrderID,
+    CONVERT(date, h.OrderDate) AS OrderDate,
+    h.CustomerID,
+    t.Name AS TerritoryName,
+    p.Name AS ProductName,
+    d.OrderQty,
+    d.UnitPrice,
+    d.LineTotal
+FROM Sales.SalesOrderHeader h
+JOIN Sales.SalesOrderDetail d
+    ON h.SalesOrderID = d.SalesOrderID
+JOIN Sales.SalesTerritory t
+    ON h.TerritoryID = t.TerritoryID
+JOIN Production.Product p
+    ON d.ProductID = p.ProductID;
+------------------------------------------------------------
+-- STEP 7: Calculate revenue metrics
+------------------------------------------------------------
+
+SELECT 
+    h.SalesOrderID,
+    CONVERT(date, h.OrderDate) AS OrderDate,
+    h.CustomerID,
+    SUM(d.LineTotal) AS OrderRevenue
+FROM Sales.SalesOrderHeader h
+JOIN Sales.SalesOrderDetail d
+    ON h.SalesOrderID = d.SalesOrderID
+GROUP BY h.SalesOrderID, h.OrderDate, h.CustomerID;
+------------------------------------------------------------
+-- STEP 8: Revenue by territory
+------------------------------------------------------------
+
+SELECT 
+    t.Name AS TerritoryName,
+    SUM(d.LineTotal) AS TotalRevenue
+FROM Sales.SalesOrderHeader h
+JOIN Sales.SalesOrderDetail d
+    ON h.SalesOrderID = d.SalesOrderID
+JOIN Sales.SalesTerritory t
+    ON h.TerritoryID = t.TerritoryID
+GROUP BY t.Name
+ORDER BY TotalRevenue DESC;
+------------------------------------------------------------
+-- STEP 9: Top products by revenue
+------------------------------------------------------------
+
+SELECT 
+    p.Name AS ProductName,
+    SUM(d.LineTotal) AS ProductRevenue
+FROM Sales.SalesOrderDetail d
+JOIN Production.Product p
+    ON d.ProductID = p.ProductID
+GROUP BY p.Name
+ORDER BY ProductRevenue DESC;
+------------------------------------------------------------
+-- STEP 10: Monthly revenue trend
+------------------------------------------------------------
+
+SELECT 
+    YEAR(h.OrderDate) AS OrderYear,
+    MONTH(h.OrderDate) AS OrderMonth,
+    SUM(d.LineTotal) AS MonthlyRevenue
+FROM Sales.SalesOrderHeader h
+JOIN Sales.SalesOrderDetail d
+    ON h.SalesOrderID = d.SalesOrderID
+GROUP BY YEAR(h.OrderDate), MONTH(h.OrderDate)
+ORDER BY OrderYear, OrderMonth;
